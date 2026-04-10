@@ -200,6 +200,10 @@ class AnalysisDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
+        # Najprej preveri akumulirano bazo iz scraping_runs/
+        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
+        if os.path.isfile(baza):
+            return baza
         for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
                      "nepremicnine_export.csv"):
             p = os.path.join(SCRIPT_DIR, name)
@@ -449,6 +453,10 @@ class MLDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
+        # Najprej preveri akumulirano bazo iz scraping_runs/
+        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
+        if os.path.isfile(baza):
+            return baza
         for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
                      "nepremicnine_export.csv"):
             p = os.path.join(SCRIPT_DIR, name)
@@ -651,6 +659,10 @@ class CenikDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
+        # Najprej preveri akumulirano bazo iz scraping_runs/
+        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
+        if os.path.isfile(baza):
+            return baza
         for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
                      "nepremicnine_export.csv"):
             p = os.path.join(SCRIPT_DIR, name)

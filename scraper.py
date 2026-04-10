@@ -18,6 +18,7 @@ Zagon:
 
 import sys
 import io
+import os
 import re
 import time
 import random
@@ -77,6 +78,9 @@ VRSTE: dict[str, str] = {
 
 # Akcija: prodaja ali najem
 AKCIJE: list[str] = ["prodaja", "najem"]
+
+# Mapa za shranjevanje posameznih zagonov in akumulirane baze
+SCRAPING_RUNS_DIR = "scraping_runs"
 
 # Pomožne funkcije za slug ↔ ime pretvorbo
 _REGIJE_SLUGS = {v: k for k, v in REGIJE.items()}   # slug → ime
@@ -454,6 +458,46 @@ def export_csv(records, path="nepremicnine_export.csv"):
     print(f"✓ CSV shranjen: {path}  ({len(records)} vrstic)")
 
 
+# ── Mapa zagonov – pomožne funkcije ──────────────────────────────────────────
+def get_runs_dir() -> str:
+    """Vrne absolutno pot do mape scraping_runs (poleg tega skripta)."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, SCRAPING_RUNS_DIR)
+
+
+def load_known_urls(master_path: str) -> set:
+    """Naloži vse URL-je iz akumulirane baze (baza.csv).
+    Vrne set URL-jev, ki jih pri naslednjem zagonu preskočimo."""
+    known: set[str] = set()
+    if not os.path.isfile(master_path):
+        return known
+    try:
+        with open(master_path, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f, delimiter=";"):
+                url = row.get("Url", "").strip()
+                if url:
+                    known.add(url)
+    except Exception as e:
+        print(f"  ⚠ Napaka pri branju baze: {e}")
+    return known
+
+
+def append_to_master(records: list, master_path: str):
+    """Doda nove zapise v akumulirano bazo (baza.csv).
+    Če datoteka ne obstaja, jo ustvari z glavo; sicer le doda vrstice."""
+    if not records:
+        return
+    file_exists = os.path.isfile(master_path)
+    mode = "a" if file_exists else "w"
+    with open(master_path, mode, newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=CSV_COLS, delimiter=";", extrasaction="ignore")
+        if not file_exists:
+            w.writeheader()
+        w.writerows(records)
+    verb = "Dodano v" if file_exists else "Ustvarjena"
+    print(f"  ✓ {verb} bazno datoteko: {master_path}  (+{len(records)} vrstic)")
+
+
 # ── Glavni tok ────────────────────────────────────────────────────────────────
 def main():
     global _headless
@@ -552,6 +596,21 @@ def main():
     print(f"  Izhod:   {csv_path}")
     print()
 
+    # ── Nastavi mapo za zagone in preveri obstoječe zapise ────────────────────
+    runs_dir     = get_runs_dir()
+    os.makedirs(runs_dir, exist_ok=True)
+    master_csv   = os.path.join(runs_dir, "baza.csv")
+    run_ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_csv_path = os.path.join(runs_dir, f"scraping_{run_ts}.csv")
+
+    print("  Preverjam obstoječe zapise v bazi…")
+    known_urls = load_known_urls(master_csv)
+    if known_urls:
+        print(f"  ✓ Baza vsebuje {len(known_urls)} obstoječih oglasov – duplikati bodo preskočeni.")
+    else:
+        print("  ℹ  Baza je prazna – vsi najdeni oglasi bodo novi.")
+    print()
+
     # Init DB
     conn = None
     if use_db:
@@ -566,9 +625,10 @@ def main():
 
     # ── Scraping vseh kombinacij ──────────────────────────────────────────────
     all_records = []
-    seen_urls   = set()
+    seen_urls   = set(known_urls)   # vključuje URL-je iz prejšnjih zagonov
     shranjenih  = 0
     napak       = 0
+    preskocenih = 0   # že v bazi iz prejšnjih zagonov
 
     for combo_idx, (reg, vrs) in enumerate(combinations, 1):
         path = list_path(akcija, reg, vrs)
@@ -611,6 +671,8 @@ def main():
                             shranjenih += 1
                     except Exception:
                         pass
+            elif url_key and url_key in known_urls:
+                preskocenih += 1   # oglas je že v bazi iz prejšnjega zagona
         print(f"           → {novi} novih  (skupaj: {len(all_records)})")
         time.sleep(delay + random.uniform(0, 0.8))
 
@@ -644,19 +706,30 @@ def main():
                                 shranjenih += 1
                         except Exception:
                             pass
+                elif url_key and url_key in known_urls:
+                    preskocenih += 1   # oglas je že v bazi iz prejšnjega zagona
 
             print(f"{len(page_recs)} oglas(ov), {novi} novih  (skupaj: {len(all_records)})")
             time.sleep(delay + random.uniform(0, 0.8))
 
     # ── Povzetek ──────────────────────────────────────────────────────────────
     print(f"\n{'=' * 64}")
-    print(f"  Skupaj pobranih:   {len(all_records)}")
+    print(f"  Skupaj novih:          {len(all_records)}")
+    print(f"  Preskočenih (v bazi):  {preskocenih}")
     if conn:
-        print(f"  Shranjenih v DB:   {shranjenih}")
+        print(f"  Shranjenih v DB:       {shranjenih}")
     if napak:
-        print(f"  Napak:             {napak}")
+        print(f"  Napak:                 {napak}")
 
     if all_records:
+        # 1. Shrani zapis zagona – samo novi oglasi tega zagona
+        export_csv(all_records, run_csv_path)
+        print(f"  📁 Zapis zagona:       {run_csv_path}")
+
+        # 2. Dodaj nove oglase v akumulirano bazo (za trening modelov)
+        append_to_master(all_records, master_csv)
+
+        # 3. Shrani standardni izhod (novi oglasi tega zagona, za nazaj-kompatibilnost)
         export_csv(all_records, csv_path)
 
         # Kratek povzetek po kombinacijah
@@ -672,7 +745,13 @@ def main():
             else:
                 print(f"  {reg_i:<20} / {vrs_i:<20}  N={cnt}")
     else:
-        print("  Ni zadetkov.")
+        print("  Ni novih nepremičnin za shranjevanje.")
+        if preskocenih:
+            print(f"  (Vsi najdeni oglasi so že bili v bazi.)")
+
+    print()
+    print(f"  📂 Mapa zagonov:       {runs_dir}")
+    print(f"  📊 Bazna datoteka:     {master_csv}")
 
     if conn:
         conn.close()
