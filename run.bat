@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
-title Nepremičnine GUI – Zaženjalnik
+title Nepremičnine GUI – Zaganjalnik
 color 0A
 
 echo.
 echo  ══════════════════════════════════════════════════════
-echo     🏠  Nepremičnine GUI  –  Zaženjalnik
+echo     🏠  Nepremičnine GUI  –  Zaganjalnik
 echo  ══════════════════════════════════════════════════════
 echo.
 
