@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "C:\Users\berni\RiderProjects\UUI-lv2\debug_scraper.py", line 22, in <module>
+    html = page.html or ""
+           ^^^^^^^^^
+  File "C:\Users\berni\AppData\Roaming\Python\Python314-32\site-packages\DrissionPage\_pages\chromium_base.py", line 329, in html
+    return self._run_cdp('DOM.getOuterHTML', objectId=self._root_id)['outerHTML']
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\berni\AppData\Roaming\Python\Python314-32\site-packages\DrissionPage\_pages\chromium_base.py", line 389, in _run_cdp
+    return r if __ERROR__ not in r else raise_error(r, self.browser, ignore)
+                                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\berni\AppData\Roaming\Python\Python314-32\site-packages\DrissionPage\_functions\tools.py", line 199, in raise_error
+    raise r
+DrissionPage.errors.ContextLostError: 
+The page is refreshed. Please wait until the page is refreshed or loaded.
+Version: 4.1.1.2

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="400">
+<rect width="620" height="400" fill="#fafafa" rx="6"/>
+<text x="310" y="24" text-anchor="middle" font-size="14" font-weight="bold" font-family="Arial,sans-serif">Cena vs. Površina  r = +0.151</text>
+<line x1="56" y1="344" x2="600" y2="344" stroke="#ccc"/>
+<line x1="56" y1="36" x2="56" y2="344" stroke="#ccc"/>
+<text x="338" y="392" text-anchor="middle" font-size="11" font-family="Arial">Površina (m²)</text>
+<text x="14" y="200" text-anchor="middle" font-size="11" font-family="Arial" transform="rotate(-90,14,200)">Cena (1000 €)</text>
+<circle cx="63.5" cy="332.3" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.6" cy="342.9" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="335.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="334.5" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.9" cy="286.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="338.1" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="337.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="342.1" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="89.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.8" cy="336.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="195.6" cy="326.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="59.0" cy="335.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.2" cy="339.9" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="59.0" cy="329.5" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="332.3" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="321.8" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.0" cy="341.5" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="339.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="339.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.0" cy="337.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="338.6" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.4" cy="344.0" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="332.9" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.3" cy="339.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="343.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="162.2" cy="318.8" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="59.0" cy="331.8" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="600.0" cy="209.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="335.1" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.3" cy="334.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="336.1" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="40.0" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="40.0" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="153.0" cy="337.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="60.1" cy="340.0" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="343.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.5" cy="46.2" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.4" cy="335.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="340.3" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.1" cy="340.3" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.9" cy="341.5" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.4" cy="336.7" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="65.8" cy="338.5" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="57.8" cy="339.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="64.1" cy="332.9" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="56.3" cy="335.4" r="3.5" fill="#2196F3" opacity="0.55"/>
+<circle cx="59.7" cy="341.0" r="3.5" fill="#2196F3" opacity="0.55"/>
+<line x1="56.0" y1="311.8" x2="600.0" y2="231.0" stroke="crimson" stroke-width="2" stroke-dasharray="6,3"/>
+</svg>

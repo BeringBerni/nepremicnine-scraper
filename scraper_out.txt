@@ -1,0 +1,270 @@
+============================================================
+  Nepremičnine.net Scraper  –  Gorenjska, hiše
+  06.04.2026 16:23:39
+============================================================
+  Strani: 10  |  Delay: 1.5s  |  Baza: False
+
+
+Faza 1: Zbiranje oglasov iz 10 strani (neposredno razčlenjevanje)...
+  Stran   1: 25 oglas(ov), 25 novih  (skupaj: 25)
+  Stran   2: 25 oglas(ov), 25 novih  (skupaj: 50)
+  Stran   3: 25 oglas(ov), 25 novih  (skupaj: 75)
+  Stran   4: 25 oglas(ov), 25 novih  (skupaj: 100)
+  Stran   5: 25 oglas(ov), 25 novih  (skupaj: 125)
+  Stran   6: 25 oglas(ov), 25 novih  (skupaj: 150)
+  Stran   7: 25 oglas(ov), 25 novih  (skupaj: 175)
+  Stran   8: 25 oglas(ov), 25 novih  (skupaj: 200)
+  Stran   9: 25 oglas(ov), 25 novih  (skupaj: 225)
+  Stran  10: 21 oglas(ov), 21 novih  (skupaj: 246)
+  ✓     495,000 €  |    114 m²  |  Ambrož Pod Krvavcem
+  ✓     995,000 €  |    301 m²  |  Bled
+  ✓     395,000 €  |    400 m²  |  Bodešče
+  ✓     255,000 €  |    189 m²  |  Bohinjska Bistrica
+  ✓     355,000 €  |    191 m²  |  Hrastje
+  ✓     493,000 €  |     93 m²  |  Kranj
+  ✓     399,000 €  |    180 m²  |  Kranj
+  ✓     690,000 €  |    100 m²  |  Kranjska Gora
+  ✓     315,000 €  |    220 m²  |  Radovljica
+  ✓   1,295,000 €  |    600 m²  |  Radovljica
+  ✓     395,000 €  |    600 m²  |  Ravne
+  ✓     420,000 €  |    184 m²  |  Zgornje Bitnje
+  ✓     475,000 €  |    103 m²  |  Ambrož Pod Krvavcem
+  ✓     327,000 €  |    120 m²  |  Ambrož Pod Krvavcem
+  ✓     850,000 €  |    133 m²  |  Ambrož Pod Krvavcem
+  ✓     540,000 €  |    272 m²  |  Bašelj
+  ✓     549,000 €  |    211 m²  |  Begunje Na Gorenjskem
+  ✓     695,000 €  |    551 m²  |  Begunje Na Gorenjskem
+  ✓     276,800 €  |    124 m²  |  Begunje Na Gorenjskem
+  ✓     425,000 €  |    154 m²  |  Belca
+  ✓     455,000 €  |    156 m²  |  Belca
+  ✓     460,000 €  |    212 m²  |  Bistrica Pri Tržiču
+  ✓     557,000 €  |    166 m²  |  Bled
+  ✓     950,000 €  |    168 m²  |  Bled
+  ✓   1,200,000 €  |    225 m²  |  Bled
+  ✓     589,000 €  |    234 m²  |  Bled
+  ✓     450,000 €  |    300 m²  |  Bled
+  ✓     995,000 €  |    304 m²  |  Bled
+  ✓     570,000 €  |    306 m²  |  Bled
+  ✓   1,390,000 €  |    360 m²  |  Bled
+  ✓     695,000 €  |    406 m²  |  Bled
+  ✓   2,200,000 €  |    815 m²  |  Bled
+  ✓     498,000 €  |    118 m²  |  Bled
+  ✓   1,700,000 €  |    364 m²  |  Bled
+  ✓     790,000 €  |    153 m²  |  Bled
+  ✓     872,000 €  |    153 m²  |  Bled
+  ✓     229,000 €  |    164 m²  |  Blejska Dobrava
+  ✓     390,000 €  |    309 m²  |  Bodešče
+  ✓     360,000 €  |    124 m²  |  Bohinjska Bela
+  ✓     699,000 €  |    143 m²  |  Bohinjska Bela
+  ✓     495,000 €  |    360 m²  |  Bohinjska Bela
+  ✓     549,000 €  |    116 m²  |  Bohinjska Bistrica
+  ✓     549,000 €  |    116 m²  |  Bohinjska Bistrica
+  ✓     549,000 €  |    116 m²  |  Bohinjska Bistrica
+  ✓     585,000 €  |    213 m²  |  Bohinjska Bistrica
+  ✓     395,000 €  |    323 m²  |  Breg Ob Savi
+  ✓     554,000 €  |    438 m²  |  Brezje
+  ✓     195,000 €  |     48 m²  |  Breznica
+  ✓     660,000 €  |    277 m²  |  Breznica
+  ✓     648,000 €  |    139 m²  |  Britof
+  ✓     490,000 €  |    325 m²  |  Britof
+  ✓     490,000 €  |    325 m²  |  Britof
+  ✓     648,180 €  |    140 m²  |  Britof
+  ✓     648,180 €  |    200 m²  |  Britof
+  ✓     270,000 €  |    179 m²  |  Cerklje Na Gorenjskem
+  ✓     300,000 €  |    110 m²  |  Četena Ravan
+  ✓     890,000 €  |    496 m²  |  Črnivec
+  ✓     690,000 €  |    634 m²  |  Črnivec
+  ✓     249,999 €  |    194 m²  |  Dovje
+  ✓     249,000 €  |    120 m²  |  Gorenja Dobrava
+  ✓     690,000 €  |    332 m²  |  Gorica
+  ✓     690,000 €  |    332 m²  |  Gorica
+  ✓     489,000 €  |    174 m²  |  Gozd Martuljek
+  ✓   1,490,000 €  |    185 m²  |  Gozd Martuljek
+  ✓     999,999 €  |    216 m²  |  Gozd Martuljek
+  ✓   1,150,000 €  |    368 m²  |  Gozd Martuljek
+  ✓   1,250,000 €  |   1250 m²  |  Gozd Martuljek
+  ✓     389,000 €  |     90 m²  |  Hlebce
+  ✓     842,000 €  |    334 m²  |  Ilovka
+  ✓     250,000 €  |     65 m²  |  Javorje
+  ✓     395,000 €  |    112 m²  |  Javorniški Rovt
+  ✓     580,000 €  |    125 m²  |  Javorniški Rovt
+  ✓     239,000 €  |    165 m²  |  Jesenice
+  ✓     225,000 €  |    187 m²  |  Jesenice
+  ✓     330,000 €  |    242 m²  |  Jesenice
+  ✓   2,200,000 €  |    297 m²  |  Jesenice
+  ✓     459,000 €  |    509 m²  |  Jesenice
+  ✓     225,000 €  |     78 m²  |  Kamna Gorica
+  ✓     580,000 €  |    259 m²  |  Kočna
+  ✓     697,000 €  |    131 m²  |  Koprivnik V Bohinju
+  ✓     239,000 €  |     67 m²  |  Kranj
+  ✓     360,000 €  |    107 m²  |  Kranj
+  ✓     250,000 €  |    125 m²  |  Kranj
+  ✓     540,000 €  |    150 m²  |  Kranj
+  ✓     270,000 €  |    158 m²  |  Kranj
+  ✓     398,000 €  |    162 m²  |  Kranj
+  ✓     374,000 €  |    176 m²  |  Kranj
+  ✓     420,000 €  |    181 m²  |  Kranj
+  ✓     490,000 €  |    230 m²  |  Kranj
+  ✓     630,000 €  |    230 m²  |  Kranj
+  ✓     422,000 €  |    288 m²  |  Kranj
+  ✓     450,000 €  |    293 m²  |  Kranj
+  ✓     950,000 €  |    320 m²  |  Kranj
+  ✓     710,000 €  |    334 m²  |  Kranj
+  ✓     798,000 €  |    518 m²  |  Kranj
+  ✓     775,000 €  |    518 m²  |  Kranj
+  ✓     490,000 €  |    310 m²  |  Kranj
+  ✓     450,000 €  |    437 m²  |  Kranj
+  ✓     260,000 €  |    108 m²  |  Kranj
+  ✓     493,000 €  |    140 m²  |  Kranj
+  ✓     395,000 €  |    284 m²  |  Kranj
+  ✓     395,000 €  |    284 m²  |  Kranj
+  ✓     798,000 €  |    517 m²  |  Kranj
+  ✓     519,000 €  |     90 m²  |  Kranj
+  ✓     549,000 €  |    130 m²  |  Kranj
+  ✓     575,000 €  |    238 m²  |  Kranj
+  ✓     359,000 €  |    161 m²  |  Kranj
+  ✓     717,000 €  |    300 m²  |  Kranj
+  ✓     495,000 €  |    115 m²  |  Kranjska Gora
+  ✓     495,000 €  |    118 m²  |  Kranjska Gora
+  ✓     425,000 €  |    154 m²  |  Kranjska Gora
+  ✓     455,000 €  |    156 m²  |  Kranjska Gora
+  ✓     650,000 €  |    193 m²  |  Kranjska Gora
+  ✓   1,490,000 €  |    218 m²  |  Kranjska Gora
+  ✓     740,000 €  |    236 m²  |  Kranjska Gora
+  ✓     900,000 €  |    248 m²  |  Kranjska Gora
+  ✓     900,000 €  |    249 m²  |  Kranjska Gora
+  ✓   1,050,000 €  |    305 m²  |  Kranjska Gora
+  ✓   2,500,000 €  |    305 m²  |  Kranjska Gora
+  ✓   1,630,000 €  |    335 m²  |  Kranjska Gora
+  ✓   3,200,000 €  |    350 m²  |  Kranjska Gora
+  ✓   1,050,000 €  |    375 m²  |  Kranjska Gora
+  ✓   2,490,000 €  |    590 m²  |  Kranjska Gora
+  ✓     625,000 €  |     90 m²  |  Kranjska Gora
+  ✓     274,000 €  |    144 m²  |  Križe
+  ✓     274,000 €  |    144 m²  |  Križe
+  ✓     350,000 €  |    159 m²  |  Krnica
+  ✓     419,000 €  |    177 m²  |  Kropa
+  ✓     135,000 €  |    220 m²  |  Kropa
+  ✓     495,000 €  |    270 m²  |  Kropa
+  ✓     258,000 €  |    280 m²  |  Kropa
+  ✓     315,000 €  |    280 m²  |  Lahovče
+  ✓     250,000 €  |    203 m²  |  Lancovo
+  ✓     439,000 €  |    356 m²  |  Lesce
+  ✓     800,000 €  |    505 m²  |  Lesce
+  ✓     800,000 €  |    539 m²  |  Lesce
+  ✓     350,000 €  |    200 m²  |  Lesce
+  ✓     438,000 €  |    294 m²  |  Lesce
+  ✓     319,000 €  |    182 m²  |  Letenice
+  ✓   1,200,000 €  |    490 m²  |  Mače
+  ✓     297,000 €  |    373 m²  |  Mevkuž
+  ✓     999,000 €  |    341 m²  |  Mlaka Pri Kranju
+  ✓     419,000 €  |    227 m²  |  Mojstrana
+  ✓     695,000 €  |    228 m²  |  Naklo
+  ✓     695,000 €  |    228 m²  |  Naklo
+  ✓     695,000 €  |    228 m²  |  Naklo
+  ✓     655,000 €  |    406 m²  |  Nomenj
+  ✓     440,000 €  |    110 m²  |  Podhom
+  ✓     850,000 €  |    178 m²  |  Podkoren
+  ✓     480,000 €  |    205 m²  |  Podkoren
+  ✓   1,290,000 €  |    270 m²  |  Podkoren
+  ✓     599,000 €  |    286 m²  |  Podkoren
+  ✓     550,000 €  |    349 m²  |  Podljubelj
+  ✓     930,000 €  |    450 m²  |  Podnart
+  ✓     530,000 €  |    135 m²  |  Podreča
+  ✓     499,500 €  |    300 m²  |  Polje
+  ✓     390,000 €  |    200 m²  |  Potoče
+  ✓     350,000 €  |    275 m²  |  Praše
+  ✓   1,425,000 €  |    144 m²  |  Preddvor
+  ✓     499,000 €  |    169 m²  |  Radovljica
+  ✓     420,000 €  |    170 m²  |  Radovljica
+  ✓     389,000 €  |    196 m²  |  Radovljica
+  ✓     240,000 €  |    246 m²  |  Radovljica
+  ✓   1,800,000 €  |    427 m²  |  Radovljica
+  ✓     485,000 €  |    127 m²  |  Radovljica
+  ✓     319,000 €  |    170 m²  |  Radovljica
+  ✓     690,000 €  |    332 m²  |  Radovljica
+  ✓     614,000 €  |    291 m²  |  Reteče
+  ✓   1,040,000 €  |    518 m²  |  Reteče
+  ✓   1,040,000 €  |    518 m²  |  Reteče
+  ✓     950,000 €  |    168 m²  |  Ribno
+  ✓     950,000 €  |    168 m²  |  Ribno
+  ✓     659,000 €  |    228 m²  |  Ribno
+  ✓   1,100,000 €  |    519 m²  |  Ribno
+  ✓     220,000 €  |    245 m²  |  Selca
+  ✓   1,270,000 €  |   2545 m²  |  Selca
+  ✓     185,000 €  |    176 m²  |  Slovenski Javornik
+  ✓   1,249,000 €  |    362 m²  |  Spodnja Lipnica
+  ✓     998,000 €  |   1500 m²  |  Spodnje Duplje
+  ✓   1,250,000 €  |   1500 m²  |  Spodnje Duplje
+  ✓     385,000 €  |    159 m²  |  Spodnje Gorje
+  ✓     600,000 €  |    324 m²  |  Srednja Vas Pri Šenčurju
+  ✓     449,000 €  |    169 m²  |  Srednja Vas Pri Šenčurju
+  ✓     575,000 €  |     64 m²  |  Srednja Vas V Bohinju
+  ✓   1,350,000 €  |    804 m²  |  Srednja Vas V Bohinju
+  ✓     545,000 €  |    133 m²  |  Stara Fužina
+  ✓     795,000 €  |    213 m²  |  Suha
+  ✓     230,000 €  |    228 m²  |  Sv. Andrej
+  ✓     479,000 €  |    112 m²  |  Šenčur
+  ✓     750,000 €  |    150 m²  |  Šenčur
+  ✓     449,000 €  |    169 m²  |  Šenčur
+  ✓     449,000 €  |    169 m²  |  Šenčur
+  ✓     605,000 €  |    174 m²  |  Šenčur
+  ✓     610,000 €  |    184 m²  |  Šenčur
+  ✓     579,000 €  |    184 m²  |  Šenčur
+  ✓     595,000 €  |    184 m²  |  Šenčur
+  ✓     595,000 €  |    184 m²  |  Šenčur
+  ✓     629,000 €  |    200 m²  |  Šenčur
+  ✓     582,000 €  |    325 m²  |  Šenčur
+  ✓     449,000 €  |    161 m²  |  Šenčur
+  ✓     615,000 €  |    175 m²  |  Šenčur
+  ✓     480,000 €  |    175 m²  |  Šenčur
+  ✓     449,000 €  |    161 m²  |  Šenčur
+  ✓     449,000 €  |    161 m²  |  Šenčur
+  ✓     449,000 €  |    169 m²  |  Šenčur
+  ✓     580,000 €  |    147 m²  |  Škofja Loka
+  ✓     435,000 €  |    151 m²  |  Škofja Loka
+  ✓     435,000 €  |    151 m²  |  Škofja Loka
+  ✓   1,590,000 €  |    348 m²  |  Škofja Loka
+  ✓   1,590,000 €  |    361 m²  |  Škofja Loka
+  ✓     880,000 €  |    390 m²  |  Škofja Loka
+  ✓     880,000 €  |    391 m²  |  Škofja Loka
+  ✓     155,000 €  |    109 m²  |  Tržič
+  ✓     280,000 €  |    190 m²  |  Tržič
+  ✓     999,000 €  |   1106 m²  |  Tržič
+  ✓     649,000 €  |     89 m²  |  Ukanc
+  ✓     558,000 €  |   1188 m²  |  Virlog
+  ✓     225,000 €  |    105 m²  |  Voglje
+  ✓     310,000 €  |    147 m²  |  Zaloše
+  ✓     395,000 €  |    393 m²  |  Zapuže
+  ✓     279,000 €  |    284 m²  |  Zasip
+  ✓     776,000 €  |    263 m²  |  Zgornja Besnica
+  ✓     760,000 €  |    285 m²  |  Zgornja Besnica
+  ✓     445,000 €  |    581 m²  |  Zgornja Lipnica
+  ✓     585,000 €  |    700 m²  |  Zgornja Lipnica
+  ✓     138,900 €  |    170 m²  |  Zgornja Sorica
+  ✓     359,000 €  |    180 m²  |  Zgornje Bitnje
+  ✓     359,000 €  |    180 m²  |  Zgornje Bitnje
+  ✓     490,000 €  |    147 m²  |  Zgornje Gorje
+  ✓     690,000 €  |    174 m²  |  Zgornje Gorje
+  ✓   1,090,000 €  |    348 m²  |  Zgornje Gorje
+  ✓     400,000 €  |    135 m²  |  Zgornje Jezersko
+  ✓     850,000 €  |    225 m²  |  Zgornji Brnik
+  ✓     550,000 €  |    120 m²  |  Zgoša
+  ✓     850,000 €  |    277 m²  |  Žabnica
+  ✓     119,500 €  |     89 m²  |  Železniki
+  ✓     144,000 €  |     91 m²  |  Železniki
+  ✓     519,000 €  |    302 m²  |  Železniki
+  ✓     135,000 €  |     90 m²  |  Železniki
+  ✓     253,000 €  |    100 m²  |  Žirovnica
+  ✓     425,000 €  |    131 m²  |  Žirovnica
+  ✓     314,000 €  |    135 m²  |  Žirovnica
+  ✓     680,000 €  |    190 m²  |  Žirovnica
+  ✓     350,000 €  |    216 m²  |  Žirovnica
+  ✓     359,000 €  |    163 m²  |  Žirovnica
+  ✓     314,000 €  |    149 m²  |  Žirovnica
+
+============================================================
+  Skupaj pobranih:   246
+✓ CSV shranjen: nepremicnine_export.csv  (246 vrstic)
+
+  Za analizo in grafe zaženite:  python analyze.py
