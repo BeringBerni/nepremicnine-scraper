@@ -42,9 +42,15 @@ args = parser.parse_args()
 
 random.seed(args.seed)
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ── Nalaganje CSV ──────────────────────────────────────────────────────────────
 CANDIDATES = [
     args.csv,
+    os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export_prodaja.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export_najem.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export.csv"),
     "nepremicnine_export_prodaja.csv",
     "nepremicnine_export_najem.csv",
     "nepremicnine_export.csv",
@@ -94,6 +100,12 @@ if len(raw_rows) < 30:
     print("✗  Premalo podatkov (< 30 vrstic).")
     sys.exit(1)
 
+# ── Odstranitev outlierjev (top 5 % in bottom 5 % po ceni) ───────────────────
+raw_rows.sort(key=lambda r: r["Cena"])
+_cut5 = max(1, int(len(raw_rows) * 0.05))
+raw_rows = raw_rows[_cut5: len(raw_rows) - _cut5]
+print(f"   Po odstranitvi 5 % najcenejših in 5 % najdražjih: {len(raw_rows)} vrstic")
+
 # ── Predprocesiranje ───────────────────────────────────────────────────────────
 def med(rows, key):
     vals = [r[key] for r in rows if r[key] is not None]
@@ -121,7 +133,7 @@ obcina_enc = {k: i for i, k in enumerate(ob_sorted)}
 FEAT_NAMES = ["VelikostM2", "ZemljisteM2", "LetoGradnje", "StSob",
               "EnergetRazred", "VrstaObjekta (enc)", "Obcina (enc)"]
 
-all_X, all_y = [], []
+all_X, all_y_raw = [], []
 for r in raw_rows:
     x = [
         r["VelikostM2"]    if r["VelikostM2"]    is not None else imp["VelikostM2"],
@@ -133,7 +145,11 @@ for r in raw_rows:
         float(obcina_enc.get(r["Obcina"], len(obcina_enc) // 2)),
     ]
     all_X.append(x)
-    all_y.append(r["Cena"])
+    all_y_raw.append(r["Cena"])
+
+# Log-transformacija ciljne spremenljivke: cene so log-normalne → log(Cena)
+# drastično izboljša napoved pri zelo dragih / zelo poceni nepremičninah
+all_y = [math.log(y) for y in all_y_raw]
 
 P = len(FEAT_NAMES)
 print(f"   Značilke ({P}): {', '.join(FEAT_NAMES)}")
@@ -155,12 +171,17 @@ tr_idx, te_idx = idx[:cut], idx[cut:]
 
 X_tr_raw  = [all_X[i] for i in tr_idx];  y_tr = [all_y[i] for i in tr_idx]
 X_te_raw  = [all_X[i] for i in te_idx];  y_te = [all_y[i] for i in te_idx]
+# Originalne cene za vrednotenje metrik (MAE/RMSE v €, R² v prostoru cen)
+y_tr_raw  = [all_y_raw[i] for i in tr_idx]
+y_te_raw  = [all_y_raw[i] for i in te_idx]
 
 X_tr, f_means, f_stds = standardize(X_tr_raw)
 X_te, _, _ = standardize(X_te_raw, f_means, f_stds)
 
 n_tr, n_te = len(X_tr), len(X_te)
 print(f"   Učna množica: {n_tr}  |  Testna množica: {n_te}")
+print(f"   Značilke ({P}): {', '.join(FEAT_NAMES)}")
+print(f"   Ciljna spr.:  log(Cena) za trening → exp(napoved) za eval")
 print()
 
 # ── Metrike ───────────────────────────────────────────────────────────────────
@@ -178,6 +199,14 @@ def rmse(yt, yp):
 
 def eval_metrics(yt, yp):
     return {"R2": r2(yt, yp), "MAE": mae(yt, yp), "RMSE": rmse(yt, yp)}
+
+def _ep(yp_log):
+    """Inverse log-transform: log(Cena) → Cena (€). Omeji na e^15 ≈ 3.3M€."""
+    return [math.exp(min(p, 15.0)) for p in yp_log]
+
+def eval_log(yt_raw, yp_log):
+    """Evalvacija modela, ki napoveduje log(Cena); metrike v prostoru cen (€)."""
+    return eval_metrics(yt_raw, _ep(yp_log))
 
 # ── Gauss eliminacija (reused by LinearRegression & Ridge) ────────────────────
 def _gauss(A, n):
@@ -493,7 +522,7 @@ print("=" * 60)
 print("  LINEARNA REGRESIJA (OLS)")
 print("=" * 60)
 lr = LinearRegression().fit(X_tr, y_tr)
-lr_m = eval_metrics(y_te, lr.predict(X_te))
+lr_m = eval_log(y_te_raw, lr.predict(X_te))
 cv_lr = kfold_score(LinearRegression, {}, X_tr, y_tr)
 print(f"  R²={lr_m['R2']:.4f}  MAE={lr_m['MAE']:,.0f} €  RMSE={lr_m['RMSE']:,.0f} €  CV R²={cv_lr:.4f}")
 
@@ -504,7 +533,7 @@ print("=" * 60)
 ridge_grid = {"alpha": [0.01, 0.1, 1.0, 10.0, 100.0, 500.0, 1000.0]}
 best_ridge, cv_ridge, ridge_all = grid_search(RidgeRegression, ridge_grid, X_tr, y_tr, label="Ridge")
 ridge = RidgeRegression(**best_ridge).fit(X_tr, y_tr)
-ridge_m = eval_metrics(y_te, ridge.predict(X_te))
+ridge_m = eval_log(y_te_raw, ridge.predict(X_te))
 print(f"  Najboljši α={best_ridge['alpha']}  R²={ridge_m['R2']:.4f}  MAE={ridge_m['MAE']:,.0f} €  RMSE={ridge_m['RMSE']:,.0f} €")
 
 print()
@@ -514,7 +543,7 @@ print("=" * 60)
 dt_grid = {"max_depth": [2, 3, 4, 5, 6, 8]}
 best_dt, cv_dt, dt_all = grid_search(DecisionTreeRegressor, dt_grid, X_tr, y_tr, label="DT")
 dt = DecisionTreeRegressor(**best_dt).fit(X_tr, y_tr)
-dt_m = eval_metrics(y_te, dt.predict(X_te))
+dt_m = eval_log(y_te_raw, dt.predict(X_te))
 print(f"  Najboljši max_depth={best_dt['max_depth']}  R²={dt_m['R2']:.4f}  MAE={dt_m['MAE']:,.0f} €  RMSE={dt_m['RMSE']:,.0f} €")
 
 print()
@@ -524,7 +553,7 @@ print("=" * 60)
 rf_grid = {"n_estimators": [10, 20], "max_depth": [3, 5, 7]}
 best_rf, cv_rf, rf_all = grid_search(RandomForestRegressor, rf_grid, X_tr, y_tr, label="RF")
 rf = RandomForestRegressor(**best_rf).fit(X_tr, y_tr)
-rf_m = eval_metrics(y_te, rf.predict(X_te))
+rf_m = eval_log(y_te_raw, rf.predict(X_te))
 print(f"  Najboljši n={best_rf['n_estimators']}, depth={best_rf['max_depth']}  "
       f"R²={rf_m['R2']:.4f}  MAE={rf_m['MAE']:,.0f} €  RMSE={rf_m['RMSE']:,.0f} €")
 
@@ -535,7 +564,7 @@ print("=" * 60)
 nn_grid = {"hidden": [16, 24], "epochs": [20, 30]}
 best_nn, cv_nn, nn_all = grid_search(NeuralNetRegressor, nn_grid, X_tr, y_tr, label="MLP")
 nn = NeuralNetRegressor(**best_nn).fit(X_tr, y_tr)
-nn_m = eval_metrics(y_te, nn.predict(X_te))
+nn_m = eval_log(y_te_raw, nn.predict(X_te))
 print(f"  Najboljši hidden={best_nn['hidden']}, epochs={best_nn['epochs']}  "
       f"R²={nn_m['R2']:.4f}  MAE={nn_m['MAE']:,.0f} €  RMSE={nn_m['RMSE']:,.0f} €")
 
@@ -1003,14 +1032,15 @@ if args.docx:
          "Odločitveno drevo in naključni gozd dosegata nižji MAE.")
 
     # Napovedano vs dejansko za najboljši model
-    best_preds = best_model.predict(X_te)
-    _img(_chart_pred_actual(y_te, best_preds,
+    best_preds_log = best_model.predict(X_te)
+    best_preds     = _ep(best_preds_log)   # nazaj v € za grafe
+    _img(_chart_pred_actual(y_te_raw, best_preds,
                             f"Napovedano vs Dejansko – {best_name.split(' (')[0]}"),
          f"Slika 2 – Napovedane vs dejanske cene: {best_name}. "
          "Točke blizu rdeče premice y=x kažejo dobro napoved.")
 
     # Porazdelitev ostankov za najboljši model
-    residuals = [yt - yp for yt, yp in zip(y_te, best_preds)]
+    residuals = [yt - yp for yt, yp in zip(y_te_raw, best_preds)]
     cv2 = _CV(700, 380)
     mn_r, mx_r = min(residuals), max(residuals)
     if mn_r == mx_r: mx_r = mn_r + 1

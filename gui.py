@@ -13,7 +13,8 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from datetime import datetime
-import math as _math
+import math
+import statistics
 
 # Poti
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -124,10 +125,18 @@ class CheckList(tk.Frame):
         self._inner = tk.Frame(canvas, bg=BG2)
         self._inner.bind("<Configure>",
                          lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=self._inner, anchor="nw")
+        # Popravek: razširi notranje okno na celotno širino canvasa
+        _win_id = canvas.create_window((0, 0), window=self._inner, anchor="nw")
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(_win_id, width=e.width))
         canvas.configure(yscrollcommand=sb.set)
         canvas.pack(side="left", fill="both", expand=True, padx=(8, 0))
         sb.pack(side="right", fill="y")
+
+        # Mousewheel: ko je miška nad canvasom, pomikamo ta seznam
+        _chk_scroll = lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", _chk_scroll))
+        canvas.bind("<Leave>", lambda e: self._restore_parent_scroll(canvas))
+        self._inner.bind("<MouseWheel>", _chk_scroll)
 
         # Checkbox za vsako postavko
         for name in items:
@@ -138,6 +147,7 @@ class CheckList(tk.Frame):
                                 font=FONT, anchor="w",
                                 command=self._on_item_change)
             cb.pack(fill="x", pady=1)
+            cb.bind("<MouseWheel>", _chk_scroll)  # neposredno pomikanje
             self._vars[name] = var
 
     def _toggle_all(self):
@@ -148,6 +158,16 @@ class CheckList(tk.Frame):
     def _on_item_change(self):
         all_set = all(v.get() for v in self._vars.values())
         self._all_var.set(all_set)
+
+    def _restore_parent_scroll(self, canvas):
+        """Ko miška zapusti canvas, reaktivira scroll starševskega _ScrollFrame."""
+        w = self.master
+        while w is not None:
+            if isinstance(w, _ScrollFrame):
+                canvas.bind_all("<MouseWheel>", w._cmd)
+                return
+            w = getattr(w, "master", None)
+        canvas.unbind_all("<MouseWheel>")
 
     def selected_slugs(self) -> list[str]:
         """Vrne seznam URL slugov izbranih postavk."""
@@ -439,7 +459,7 @@ class MLDialog(tk.Toplevel):
 
         self._parent = parent
         self._csv_var   = tk.StringVar(value=parent._csv_var.get())
-        self._split_var = tk.DoubleVar(value=0.80)
+        self._split_var = tk.DoubleVar(value=80.0)   # 80 % učna množica
         self._seed_var  = tk.IntVar(value=42)
         self._docx_var  = tk.BooleanVar(value=True)
         default_docx = os.path.join(SCRIPT_DIR,
@@ -513,11 +533,15 @@ class MLDialog(tk.Toplevel):
         srow("Učna množica (%):",
              lambda r: tk.Spinbox(r, from_=50, to=95, increment=5,
                                   textvariable=self._split_var, width=6,
-                                  bg=BG3, fg=FG, relief="flat", font=FONT))
+                                  bg=BG3, fg=FG, insertbackground=FG,
+                                  buttonbackground=BG3, relief="flat",
+                                  highlightthickness=0, font=FONT))
         srow("Naključno seme:",
              lambda r: tk.Spinbox(r, from_=0, to=9999,
                                   textvariable=self._seed_var, width=8,
-                                  bg=BG3, fg=FG, relief="flat", font=FONT))
+                                  bg=BG3, fg=FG, insertbackground=FG,
+                                  buttonbackground=BG3, relief="flat",
+                                  highlightthickness=0, font=FONT))
 
         # Modeli info
         info_lf = tk.LabelFrame(body, text=" Modeli (vsi se zaženejo) ",
@@ -775,7 +799,9 @@ class CenikDialog(tk.Toplevel):
             sp = tk.Spinbox(inp_lf, from_=from_, to=to, increment=inc,
                             textvariable=var, width=w,
                             bg=BG3, fg=FG, insertbackground=FG,
-                            buttonbackground=BG3, relief="flat", font=FONT)
+
+                            buttonbackground=BG3, relief="flat",
+                            highlightthickness=0, font=FONT)
             sp.grid(row=r, column=c, sticky="w", padx=(0, 8), pady=4)
             return sp
 
@@ -1147,7 +1173,8 @@ class ScraperGUI(tk.Tk):
             lambda p, **kw: tk.Spinbox(p, from_=0, to=999,
                 textvariable=self._strani_var, width=6,
                 bg=BG3, fg=FG, insertbackground=FG,
-                buttonbackground=BG3, relief="flat", font=FONT,
+                buttonbackground=BG3, relief="flat",
+                highlightthickness=0, font=FONT,
                 command=self._update_estimate))
         tk.Label(settings, text="  (0 = vse strani samodejno)",
                  bg=BG, fg=FG2, font=("Segoe UI", 8)).pack(anchor="w", padx=20, pady=(0, 2))
@@ -1157,7 +1184,8 @@ class ScraperGUI(tk.Tk):
             lambda p, **kw: tk.Spinbox(p, from_=0.5, to=10.0, increment=0.5,
                 textvariable=self._delay_var, width=6,
                 bg=BG3, fg=FG, insertbackground=FG,
-                buttonbackground=BG3, relief="flat", font=FONT))
+                buttonbackground=BG3, relief="flat",
+                highlightthickness=0, font=FONT))
 
         # CSV datoteka
         csv_row = tk.Frame(settings, bg=BG)

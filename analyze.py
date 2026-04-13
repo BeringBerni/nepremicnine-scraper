@@ -13,6 +13,8 @@ import sys, os, csv, math, argparse, statistics, random, struct, zlib
 from datetime import datetime
 from collections import defaultdict
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ── Argumenti ────────────────────────────────────────────────────────────────
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -32,6 +34,10 @@ args = parser.parse_args()
 
 CSV_CANDIDATES = [
     args.csv,
+    os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export_prodaja.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export_najem.csv"),
+    os.path.join(SCRIPT_DIR, "nepremicnine_export.csv"),
     "nepremicnine_export_prodaja.csv",
     "nepremicnine_export_najem.csv",
     "nepremicnine_export.csv",
@@ -180,7 +186,38 @@ print("  (cena ~ površina + zemljišče + leto gradnje)")
 print("=" * 58)
 
 FEATS = ["VelikostM2", "ZemljisteM2", "LetoGradnje"]
-mrows = [r for r in rows if all(r[f] for f in FEATS) and r["LetoGradnje"] > 1900]
+
+# Imputacija manjkajočih vrednosti z mediano iz obstoječih podatkov
+_imp = {}
+for _fi in FEATS:
+    _fv = [r[_fi] for r in rows if r[_fi] is not None
+           and (_fi != "LetoGradnje" or r[_fi] > 1900)
+           and (_fi != "VelikostM2"  or r[_fi] > 0)]
+    _imp[_fi] = statistics.median(_fv) if _fv else None
+
+# Zahtevamo vsaj VelikostM2; ZemljisteM2 in LetoGradnje imputiramo z mediano
+mrows = []
+for _r in rows:
+    if not _r["VelikostM2"] or _r["VelikostM2"] <= 0:
+        continue
+    _mr = dict(_r)
+    for _fi in FEATS[1:]:
+        if _mr[_fi] is None or (_fi == "LetoGradnje" and _mr[_fi] <= 1900):
+            if _imp[_fi] is not None:
+                _mr[_fi] = _imp[_fi]
+    if all(_mr[_fi] is not None for _fi in FEATS):
+        mrows.append(_mr)
+
+print(f"\n  Vrstice za model (po imputaciji): {len(mrows)}")
+
+# Odstranitev outlierjev: top 5 % in bottom 5 % po ceni (pred treningom)
+if len(mrows) >= 40:
+    mrows.sort(key=lambda r: r["Cena"])
+    _cut5 = max(1, int(len(mrows) * 0.05))
+    mrows = mrows[_cut5: len(mrows) - _cut5]
+    print(f"  Po rezanju outlierjev (5–95 %): {len(mrows)} vrstic")
+
+_model_metrics: dict = {}   # zapolni se spodaj, za DOCX izvoz
 
 if len(mrows) >= 20:
     def get_XY(data):
@@ -227,15 +264,28 @@ if len(mrows) >= 20:
     tr, te = shuffled[:sp], shuffled[sp:]
 
     Xtr, ytr = get_XY(tr); Xte, yte = get_XY(te)
+    # Log-transformacija za trening → exp() za napoved (bolje pri ekstremnih cenah)
+    ytr_log = [math.log(y) for y in ytr]
     Xtr_s, fm, fs = standardize(Xtr)
     Xte_s = [[(x[j]-fm[j])/fs[j] for j in range(len(FEATS))] for x in Xte]
-    coefs, ic = ridge(Xtr_s, ytr)
-    ypred = predict(Xte_s, coefs, ic)
+    coefs, ic = ridge(Xtr_s, ytr_log)
+    ypred = [math.exp(p) for p in predict(Xte_s, coefs, ic)]  # nazaj v €
 
-    print(f"\n  Učna množica:  {len(tr)}  |  Testna: {len(te)}")
-    print(f"  R² (test):     {r2_score(yte, ypred):.4f}")
-    print(f"  MAE:           {statistics.mean(abs(t-p) for t,p in zip(yte,ypred)):,.0f} €")
-    print(f"  RMSE:          {math.sqrt(statistics.mean((t-p)**2 for t,p in zip(yte,ypred))):,.0f} €")
+    _mae  = statistics.mean(abs(t - p) for t, p in zip(yte, ypred))
+    _rmse = math.sqrt(statistics.mean((t - p) ** 2 for t, p in zip(yte, ypred)))
+    _r2   = r2_score(yte, ypred)
+    _mape = statistics.mean(abs(t - p) / t * 100 for t, p in zip(yte, ypred) if t != 0)
+    _med_cena = statistics.median(yte)
+
+    print("\n" + "=" * 58)
+    print("  KAKOVOST MODELA")
+    print("=" * 58)
+    print(f"\n  Učna množica:      {len(tr)} vzorcev")
+    print(f"  Testna množica:    {len(te)} vzorcev")
+    print(f"  R² (test):         {_r2:.4f}")
+    print(f"  MAE:               {_mae:,.0f} €  ({_mae / _med_cena * 100:.1f} % mediane)")
+    print(f"  RMSE:              {_rmse:,.0f} €")
+    print(f"  Error rate (MAPE): {_mape:.1f} %")
     print("\n  Koeficienti (standardizirani):")
     for f, c in zip(FEATS, coefs):
         print(f"    {f:<16}: {c:>12,.2f}")
@@ -248,12 +298,27 @@ if len(mrows) >= 20:
         train = mrows[:k*fold] + mrows[(k+1)*fold:]
         if len(val)<2 or len(train)<10: continue
         Xt,yt_ = get_XY(train); Xv,yv_ = get_XY(val)
+        yt_log = [math.log(y) for y in yt_]
         Xts,fm2,fs2 = standardize(Xt)
         Xvs = [[(x[j]-fm2[j])/fs2[j] for j in range(len(FEATS))] for x in Xv]
-        c2,ic2 = ridge(Xts,yt_)
-        cv_r2s.append(r2_score(yv_, predict(Xvs,c2,ic2)))
+        c2,ic2 = ridge(Xts, yt_log)
+        pred_raw = [math.exp(p) for p in predict(Xvs, c2, ic2)]
+        cv_r2s.append(r2_score(yv_, pred_raw))
     if cv_r2s:
-        print(f"  R² (CV 5-fold): {statistics.mean(cv_r2s):.4f}")
+        _cv_r2 = statistics.mean(cv_r2s)
+        print(f"  R² (CV 5-fold):    {_cv_r2:.4f}")
+    else:
+        _cv_r2 = None
+    print("=" * 58)
+
+    _model_metrics.update({
+        "n_train": len(tr), "n_test": len(te),
+        "r2": _r2, "mae": _mae, "rmse": _rmse,
+        "mape": _mape, "mape_med": _mae / _med_cena * 100,
+        "coefs": list(zip(FEATS, coefs)),
+    })
+    if _cv_r2 is not None:
+        _model_metrics["cv_r2"] = _cv_r2
 else:
     print(f"\n  Premalo podatkov ({len(mrows)} vrstic, potrebnih vsaj 20).")
 
@@ -618,7 +683,7 @@ def _chart_bar(labels, values, title) -> bytes | None:
     return cv.to_png()
 
 
-def _export_docx(rows, lok_groups, sel_grafi, output_path):
+def _export_docx(rows, lok_groups, sel_grafi, output_path, model_metrics=None):
     """Izvozi analizo v Word dokument (.docx)."""
     try:
         from docx import Document
@@ -714,9 +779,33 @@ def _export_docx(rows, lok_groups, sel_grafi, output_path):
                 _row(kt, [label, f"{rv:+.4f}"])
     doc.add_paragraph()
 
-    # ── 5. Grafi ──────────────────────────────────────────────────────────
+    # ── 5. Model napovedovanja cene ───────────────────────────────────────────
+    if model_metrics:
+        doc.add_heading("5. Model napovedovanja cene (Ridge regresija)", 1)
+        mt = doc.add_table(rows=1, cols=2); mt.style = "Table Grid"
+        _hdr(mt, ["Metrika", "Vrednost"])
+        _row(mt, ["Učna množica",     f"{model_metrics['n_train']} vzorcev"])
+        _row(mt, ["Testna množica",   f"{model_metrics['n_test']} vzorcev"])
+        _row(mt, ["R² (test)",        f"{model_metrics['r2']:.4f}"])
+        _row(mt, ["MAE",              f"{model_metrics['mae']:,.0f} €  "
+                                      f"({model_metrics['mape_med']:.1f} % mediane)"])
+        _row(mt, ["RMSE",             f"{model_metrics['rmse']:,.0f} €"])
+        _row(mt, ["Error rate (MAPE)", f"{model_metrics['mape']:.1f} %"])
+        if "cv_r2" in model_metrics:
+            _row(mt, ["R² (CV 5-fold)", f"{model_metrics['cv_r2']:.4f}"])
+        doc.add_paragraph()
+        # Koeficienti
+        if model_metrics.get("coefs"):
+            doc.add_paragraph("Koeficienti modela (standardizirani):")
+            ct = doc.add_table(rows=1, cols=2); ct.style = "Table Grid"
+            _hdr(ct, ["Značilnost", "Koeficient"])
+            for feat, coef in model_metrics["coefs"]:
+                _row(ct, [feat, f"{coef:,.2f}"])
+        doc.add_paragraph()
+
+    # ── 6. Grafi ──────────────────────────────────────────────────────────
     if sel_grafi:
-        doc.add_heading("5. Grafi", 1)
+        doc.add_heading("6. Grafi", 1)
         fig_num = [0]
 
         def _add_chart(png_bytes, caption):
@@ -820,5 +909,5 @@ if args.docx:
     docx_path = args.docx_izhod or os.path.join(
         os.path.dirname(os.path.abspath(csv_path)) if csv_path else ".",
         f"analiza_{datetime.now().strftime('%Y%m%d_%H%M')}.docx")
-    _export_docx(rows, lok_groups, sel_grafi, docx_path)
+    _export_docx(rows, lok_groups, sel_grafi, docx_path, _model_metrics or None)
 

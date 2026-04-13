@@ -45,6 +45,7 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 CANDIDATES = [
     args.csv,
+    os.path.join(_SCRIPT_DIR, "scraping_runs", "baza.csv"),
     os.path.join(_SCRIPT_DIR, "nepremicnine_export_prodaja.csv"),
     os.path.join(_SCRIPT_DIR, "nepremicnine_export_najem.csv"),
     os.path.join(_SCRIPT_DIR, "nepremicnine_export.csv"),
@@ -62,7 +63,7 @@ csv_path = os.path.abspath(csv_path)
 
 # ── Pot do predpomnilnika ──────────────────────────────────────────────────────
 _csv_base  = os.path.splitext(csv_path)[0]
-cache_path = f"{_csv_base}_cenik_rf{args.n_trees}_d{args.depth}.pkl"
+cache_path = f"{_csv_base}_cenik_rf{args.n_trees}_d{args.depth}_log.pkl"
 
 # ── Energetski razred → število ────────────────────────────────────────────────
 _ENERGY = {"A+": 8, "A": 7, "B": 6, "C": 5, "D": 4, "E": 3, "F": 2, "G": 1}
@@ -192,7 +193,8 @@ def _cache_valid(path, csv_path, n_trees, depth, seed):
         m.get("csv_size")  == os.path.getsize(csv_path)  and
         m.get("n_trees")   == n_trees and
         m.get("depth")     == depth   and
-        m.get("seed")      == seed
+        m.get("seed")      == seed    and
+        m.get("use_log",   False) == True   # log-transformacija ciljne spr.
     )
 
 
@@ -257,6 +259,12 @@ def load_and_train(csv_path, n_trees, depth, seed):
         print("NAPAKA=Premalo podatkov (< 20 vrstic)")
         sys.exit(1)
 
+    # Odstranitev outlierjev: top 5 % in bottom 5 % po ceni
+    raw_rows.sort(key=lambda r: r["Cena"])
+    _cut5 = max(1, int(len(raw_rows) * 0.05))
+    raw_rows = raw_rows[_cut5: len(raw_rows) - _cut5]
+    n_vzorcev = len(raw_rows)
+
     # Imputacija
     imp = {k: _med(raw_rows, k) for k in
            ["VelikostM2", "ZemljisteM2", "LetoGradnje", "StSob", "EnergetRazred"]}
@@ -290,15 +298,20 @@ def load_and_train(csv_path, n_trees, depth, seed):
     all_X = [row_to_x(r) for r in raw_rows]
     all_y = [r["Cena"] for r in raw_rows]
 
+    # ── Log-transformacija ciljne spremenljivke ────────────────────────────────
+    # Cene nepremičnin so log-normalno porazdeljene → trening na log(Cena) močno
+    # izboljša napoved pri zelo dragih in zelo poceni nepremičninah.
+    log_y = [math.log(y) for y in all_y]
+
     # Standardizacija
     p       = len(all_X[0])
     f_means = [statistics.mean(row[j] for row in all_X) for j in range(p)]
     f_stds  = [(statistics.stdev(row[j] for row in all_X) or 1.0) for j in range(p)]
     X_s     = [[(row[j] - f_means[j]) / f_stds[j] for j in range(p)] for row in all_X]
 
-    # Trening
+    # Trening (na log_y)
     random.seed(seed)
-    rf = RandomForest(n=n_trees, depth=depth).fit(X_s, all_y)
+    rf = RandomForest(n=n_trees, depth=depth).fit(X_s, log_y)
 
     meta = {
         "csv_mtime": os.path.getmtime(csv_path),
@@ -306,6 +319,7 @@ def load_and_train(csv_path, n_trees, depth, seed):
         "n_trees":   n_trees,
         "depth":     depth,
         "seed":      seed,
+        "use_log":   True,
     }
     model_data = {
         "rf":         rf,
@@ -318,6 +332,7 @@ def load_and_train(csv_path, n_trees, depth, seed):
         "vc":         dict(vc),
         "raw_rows":   raw_rows,
         "n_vzorcev":  n_vzorcev,
+        "use_log":    True,
     }
     return meta, model_data
 
@@ -370,6 +385,8 @@ if args.samo_trening:
     print(f"TRENING_OK=1")
     print(f"VZORCI={n_vzorcev}")
     print(f"MODEL_POT={cache_path}")
+    print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina")
+    print(f"USE_LOG=1")
     sys.exit(0)
 
 
@@ -396,11 +413,14 @@ x_raw = [
 ]
 x_std = [(x_raw[j] - f_means[j]) / f_stds[j] for j in range(len(x_raw))]
 
-tree_preds = rf.predict_all(x_std)
-napoved    = statistics.mean(tree_preds)
-std_pred   = statistics.stdev(tree_preds) if len(tree_preds) > 1 else 0.0
-ci_min     = max(0.0, napoved - 1.64 * std_pred)
-ci_max     = napoved + 1.64 * std_pred
+tree_preds_log = rf.predict_all(x_std)
+napoved_log    = statistics.mean(tree_preds_log)
+std_log        = statistics.stdev(tree_preds_log) if len(tree_preds_log) > 1 else 0.0
+# Inverse log-transform → nazaj v prostor cen (€)
+napoved        = math.exp(napoved_log)
+ci_min         = max(0.0, math.exp(napoved_log - 1.64 * std_log))
+ci_max         = math.exp(napoved_log + 1.64 * std_log)
+std_pred       = napoved * std_log    # aproksimacija σ v prostoru cen (delta metoda)
 
 # ── Podobni oglasi ─────────────────────────────────────────────────────────────
 def _similar(vrsta=None, kraj=None, min_n=3):
@@ -425,6 +445,8 @@ napaka_pct = abs(napoved - sim_med) / sim_med * 100 if sim_med else 0.0
 # ── Izpis (KEY=VALUE format za GUI) ───────────────────────────────────────────
 print()
 print(f"VZORCI={n_vzorcev}")
+print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina")
+print(f"USE_LOG=1")
 print(f"NAPOVEDANA={napoved:.0f}")
 print(f"CI_MIN={ci_min:.0f}")
 print(f"CI_MAX={ci_max:.0f}")
