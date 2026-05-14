@@ -65,6 +65,26 @@ csv_path = os.path.abspath(csv_path)
 _csv_base  = os.path.splitext(csv_path)[0]
 cache_path = f"{_csv_base}_cenik_rf{args.n_trees}_d{args.depth}_log.pkl"
 
+# ── Samodejno čiščenje zastarelih cache datotek ───────────────────────────────
+def _cleanup_stale_caches(csv_path: str, active_cache: str):
+    """Izbriše .pkl cache datoteke, ki ne ustrezajo trenutnemu CSV ali so zastarele."""
+    base_dir  = os.path.dirname(csv_path)
+    csv_stem  = os.path.splitext(os.path.basename(csv_path))[0]
+    for fname in os.listdir(base_dir):
+        if not fname.endswith(".pkl"):
+            continue
+        if not fname.startswith(csv_stem + "_cenik_"):
+            continue
+        full = os.path.join(base_dir, fname)
+        if full == active_cache:
+            continue  # aktivni cache – ne brišemo
+        try:
+            os.remove(full)
+            print(f"   🗑  Odstranjen zastareli cache: {fname}", flush=True)
+        except Exception as e:
+            print(f"   ⚠  Ne morem odstraniti {fname}: {e}", flush=True)
+
+_cleanup_stale_caches(csv_path, cache_path)
 # ── Energetski razred → število ────────────────────────────────────────────────
 _ENERGY = {"A+": 8, "A": 7, "B": 6, "C": 5, "D": 4, "E": 3, "F": 2, "G": 1}
 
@@ -194,7 +214,8 @@ def _cache_valid(path, csv_path, n_trees, depth, seed):
         m.get("n_trees")   == n_trees and
         m.get("depth")     == depth   and
         m.get("seed")      == seed    and
-        m.get("use_log",   False) == True   # log-transformacija ciljne spr.
+        m.get("use_log",   False) == True   and
+        m.get("feat_version", 1) == 2          # zavrni stare cache brez novih značilk
     )
 
 
@@ -269,12 +290,24 @@ def load_and_train(csv_path, n_trees, depth, seed):
     imp = {k: _med(raw_rows, k) for k in
            ["VelikostM2", "ZemljisteM2", "LetoGradnje", "StSob", "EnergetRazred"]}
 
-    # VrstaObjekta → koda po frekvenci
+    # VrstaObjekta → ordinalna koda po mediani cene (enako kot Obcina!)
+    # ⚠  Prej: koda po frekvenci → RF ni ločil drage od poceni vrst
     vc = defaultdict(int)
+    vrsta_pr   = defaultdict(list)
+    vrsta_m2pr = defaultdict(list)
     for r in raw_rows:
         vc[r["VrstaObjekta"]] += 1
-    vrsta_enc = {v: i for i, (v, _) in
-                 enumerate(sorted(vc.items(), key=lambda x: -x[1]))}
+        if r["VrstaObjekta"]:
+            vrsta_pr[r["VrstaObjekta"]].append(r["Cena"])
+            if r["VelikostM2"] and r["VelikostM2"] > 0:
+                vrsta_m2pr[r["VrstaObjekta"]].append(r["Cena"] / r["VelikostM2"])
+    vrsta_sorted = sorted(vrsta_pr, key=lambda k: statistics.median(vrsta_pr[k]))
+    vrsta_enc    = {k: i for i, k in enumerate(vrsta_sorted)}
+
+    # Mediana cena/m² po vrsti → direkten cenovni signal za model
+    cena_m2_vrsta       = {k: statistics.median(v) for k, v in vrsta_m2pr.items()}
+    global_cena_m2_vrsta = (statistics.median([v for vals in vrsta_m2pr.values() for v in vals])
+                             if vrsta_m2pr else 2000.0)
 
     # Obcina → ordinalna koda po mediani cene
     ob_pr = defaultdict(list)
@@ -285,14 +318,17 @@ def load_and_train(csv_path, n_trees, depth, seed):
     obcina_enc = {k: i for i, k in enumerate(ob_sorted)}
 
     def row_to_x(r):
+        vrsta  = r["VrstaObjekta"]
+        obcina = r["Obcina"]
         return [
             r["VelikostM2"]    if r["VelikostM2"]    is not None else imp["VelikostM2"],
             r["ZemljisteM2"]   if r["ZemljisteM2"]   is not None else imp["ZemljisteM2"],
             r["LetoGradnje"]   if r["LetoGradnje"]    is not None else imp["LetoGradnje"],
             r["StSob"]         if r["StSob"]          is not None else imp["StSob"],
             r["EnergetRazred"] if r["EnergetRazred"]  is not None else imp["EnergetRazred"],
-            float(vrsta_enc.get(r["VrstaObjekta"], 0)),
-            float(obcina_enc.get(r["Obcina"], len(obcina_enc) // 2)),
+            float(vrsta_enc.get(vrsta,  len(vrsta_enc)  // 2)),          # rang po mediani cene
+            float(obcina_enc.get(obcina, len(obcina_enc) // 2)),         # rang po mediani cene
+            math.log1p(cena_m2_vrsta.get(vrsta, global_cena_m2_vrsta)), # log(€/m² vrste)
         ]
 
     all_X = [row_to_x(r) for r in raw_rows]
@@ -314,25 +350,29 @@ def load_and_train(csv_path, n_trees, depth, seed):
     rf = RandomForest(n=n_trees, depth=depth).fit(X_s, log_y)
 
     meta = {
-        "csv_mtime": os.path.getmtime(csv_path),
-        "csv_size":  os.path.getsize(csv_path),
-        "n_trees":   n_trees,
-        "depth":     depth,
-        "seed":      seed,
-        "use_log":   True,
+        "csv_mtime":  os.path.getmtime(csv_path),
+        "csv_size":   os.path.getsize(csv_path),
+        "n_trees":    n_trees,
+        "depth":      depth,
+        "seed":       seed,
+        "use_log":    True,
+        "feat_version": 2,   # bump pri spremembi feature engineeringa → razveljavi stari cache
     }
     model_data = {
-        "rf":         rf,
-        "f_means":    f_means,
-        "f_stds":     f_stds,
-        "imp":        imp,
-        "vrsta_enc":  vrsta_enc,
-        "obcina_enc": obcina_enc,
-        "ob_sorted":  ob_sorted,
-        "vc":         dict(vc),
-        "raw_rows":   raw_rows,
-        "n_vzorcev":  n_vzorcev,
-        "use_log":    True,
+        "rf":                  rf,
+        "f_means":             f_means,
+        "f_stds":              f_stds,
+        "imp":                 imp,
+        "vrsta_enc":           vrsta_enc,
+        "vrsta_sorted":        vrsta_sorted,
+        "cena_m2_vrsta":       cena_m2_vrsta,
+        "global_cena_m2_vrsta": global_cena_m2_vrsta,
+        "obcina_enc":          obcina_enc,
+        "ob_sorted":           ob_sorted,
+        "vc":                  dict(vc),
+        "raw_rows":            raw_rows,
+        "n_vzorcev":           n_vzorcev,
+        "use_log":             True,
     }
     return meta, model_data
 
@@ -368,16 +408,19 @@ if not use_cache:
         print(f"   ⚠  Model ni bil shranjen: {e}", flush=True)
 
 # Razpakuj model
-rf         = model_data["rf"]
-f_means    = model_data["f_means"]
-f_stds     = model_data["f_stds"]
-imp        = model_data["imp"]
-vrsta_enc  = model_data["vrsta_enc"]
-obcina_enc = model_data["obcina_enc"]
-ob_sorted  = model_data["ob_sorted"]
-vc         = model_data["vc"]
-raw_rows   = model_data["raw_rows"]
-n_vzorcev  = model_data["n_vzorcev"]
+rf                   = model_data["rf"]
+f_means              = model_data["f_means"]
+f_stds               = model_data["f_stds"]
+imp                  = model_data["imp"]
+vrsta_enc            = model_data["vrsta_enc"]
+vrsta_sorted         = model_data["vrsta_sorted"]
+cena_m2_vrsta        = model_data["cena_m2_vrsta"]
+global_cena_m2_vrsta = model_data["global_cena_m2_vrsta"]
+obcina_enc           = model_data["obcina_enc"]
+ob_sorted            = model_data["ob_sorted"]
+vc                   = model_data["vc"]
+raw_rows             = model_data["raw_rows"]
+n_vzorcev            = model_data["n_vzorcev"]
 
 # ── Samo-trening: izhod brez napovedi ─────────────────────────────────────────
 if args.samo_trening:
@@ -385,7 +428,7 @@ if args.samo_trening:
     print(f"TRENING_OK=1")
     print(f"VZORCI={n_vzorcev}")
     print(f"MODEL_POT={cache_path}")
-    print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina")
+    print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina,CenaM2Vrsta")
     print(f"USE_LOG=1")
     sys.exit(0)
 
@@ -393,7 +436,7 @@ if args.samo_trening:
 # ──────────────────────────────────────────────────────────────────────────────
 #  NAPOVED
 # ──────────────────────────────────────────────────────────────────────────────
-vrsta_vhod = args.vrsta  or sorted(vc, key=lambda k: -vc[k])[0]
+vrsta_vhod = args.vrsta  or vrsta_sorted[len(vrsta_sorted) // 2]
 kraj_vhod  = args.kraj   or ob_sorted[len(ob_sorted) // 2]
 povrsina   = args.povrsina   if args.povrsina   else imp["VelikostM2"]
 zemljisce  = args.zemljisce  if args.zemljisce  else imp["ZemljisteM2"]
@@ -408,8 +451,9 @@ x_raw = [
     leto if leto > 1_900 else imp["LetoGradnje"],
     sobe,
     float(enr_in),
-    float(vrsta_enc.get(vrsta_vhod, vrsta_enc.get(list(vrsta_enc)[0], 0))),
+    float(vrsta_enc.get(vrsta_vhod, len(vrsta_enc) // 2)),
     float(obcina_enc.get(kraj_vhod, len(obcina_enc) // 2)),
+    math.log1p(cena_m2_vrsta.get(vrsta_vhod, global_cena_m2_vrsta)),
 ]
 x_std = [(x_raw[j] - f_means[j]) / f_stds[j] for j in range(len(x_raw))]
 
@@ -445,7 +489,7 @@ napaka_pct = abs(napoved - sim_med) / sim_med * 100 if sim_med else 0.0
 # ── Izpis (KEY=VALUE format za GUI) ───────────────────────────────────────────
 print()
 print(f"VZORCI={n_vzorcev}")
-print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina")
+print(f"ZNACILKE=VelikostM2,ZemljisteM2,LetoGradnje,StSob,EnergetRazred,VrstaObjekta,Obcina,CenaM2Vrsta")
 print(f"USE_LOG=1")
 print(f"NAPOVEDANA={napoved:.0f}")
 print(f"CI_MIN={ci_min:.0f}")

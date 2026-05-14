@@ -121,7 +121,20 @@ if __name__ == "__main__":
     # Omogoči ANSI barve v starejšem Windows cmd
     os.system("color")
 
-    check_and_install()
-    gui_path = find_gui()
-    launch_gui(gui_path)
+    # Ko teče kot PyInstaller .exe, ne kličemo subprocess(sys.executable, gui.py)
+    # ker bi poklicali sam sebe.  Namesto tega uvozimo in zaženemo gui neposredno.
+    if getattr(sys, "frozen", False):
+        check_and_install()
+        try:
+            import gui as _gui
+            _gui.ScraperGUI().mainloop()
+        except Exception as e:
+            print(f"   {RED('✗  Napaka pri zagonu GUI:')} {e}")
+            import traceback; traceback.print_exc()
+            input("\n   Pritisni Enter za izhod …")
+            sys.exit(1)
+    else:
+        check_and_install()
+        gui_path = find_gui()
+        launch_gui(gui_path)
 

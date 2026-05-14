@@ -16,12 +16,54 @@ from datetime import datetime
 import math
 import statistics
 
-# Poti
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# ── Poti ─────────────────────────────────────────────────────────────────────
+# Ko teče kot PyInstaller .exe, je __file__ v sys._MEIPASS (temp dir).
+# Skripte (cenik.py, scraper.py …) so izvlečene v sys._MEIPASS.
+# Podatkovne datoteke (CSV, PKL) so ob exe datoteki (DATA_DIR).
+_FROZEN    = getattr(sys, "frozen", False)
+SCRIPT_DIR = sys._MEIPASS if _FROZEN else os.path.dirname(os.path.abspath(__file__))
+DATA_DIR   = os.path.dirname(sys.executable) if _FROZEN else SCRIPT_DIR
+
 SCRAPER    = os.path.join(SCRIPT_DIR, "scraper.py")
 ANALYZE    = os.path.join(SCRIPT_DIR, "analyze.py")
 MODELI     = os.path.join(SCRIPT_DIR, "modeli.py")
+MODELI_V2  = os.path.join(SCRIPT_DIR, "modeli_v2.py")    # Novi ML modeli (sklearn/XGBoost)
+PREDICT_V2 = os.path.join(SCRIPT_DIR, "predict_v2.py")   # Hitri prediktor (shranjen model)
 CENIK      = os.path.join(SCRIPT_DIR, "cenik.py")
+
+# Python 3.12 venv (za scikit-learn, XGBoost, LightGBM)
+_VENV312  = os.path.join(DATA_DIR, ".venv312", "Scripts", "python.exe")
+PYTHON_ML = _VENV312 if os.path.isfile(_VENV312) else sys.executable
+
+
+def _get_python() -> str:
+    """
+    Vrne pot do pravega Python interpreterja.
+    Ko teče kot PyInstaller .exe, sys.executable kaže na .exe, ne na Python!
+    """
+    if not _FROZEN:
+        return sys.executable
+    # Iščemo pravi Python ob exe datoteki ali v PATH
+    exe_dir = os.path.dirname(sys.executable)
+    for name in ("python.exe", "python3.exe", "py.exe"):
+        p = os.path.join(exe_dir, name)
+        if os.path.isfile(p):
+            return p
+    # Iskanje v PATH (where na Windows)
+    for cmd in ("py", "python", "python3"):
+        try:
+            result = subprocess.check_output(
+                ["where", cmd], text=True,
+                stderr=subprocess.DEVNULL, timeout=3
+            ).splitlines()
+            for line in result:
+                line = line.strip()
+                if line and os.path.isfile(line) and "WindowsApps" not in line:
+                    return line
+        except Exception:
+            pass
+    # Zadnja možnost: sys.executable (bo napaka, ampak vsaj prikazali bomo)
+    return sys.executable
 
 # Uvozi konstante iz scraper.py
 sys.path.insert(0, SCRIPT_DIR)
@@ -220,15 +262,16 @@ class AnalysisDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
-        # Najprej preveri akumulirano bazo iz scraping_runs/
-        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
-        if os.path.isfile(baza):
-            return baza
-        for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
-                     "nepremicnine_export.csv"):
-            p = os.path.join(SCRIPT_DIR, name)
-            if os.path.isfile(p):
-                return p
+        # Iščemo v DATA_DIR (ob exe) in v SCRIPT_DIR
+        for base in (DATA_DIR, SCRIPT_DIR):
+            baza = os.path.join(base, "scraping_runs", "baza.csv")
+            if os.path.isfile(baza):
+                return baza
+            for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
+                         "nepremicnine_export.csv"):
+                p = os.path.join(base, name)
+                if os.path.isfile(p):
+                    return p
         return ""
 
     # ── UI gradnja ────────────────────────────────────────────────────────────
@@ -417,7 +460,7 @@ class AnalysisDialog(tk.Toplevel):
                                    "Izberi vsaj en graf za generiranje!")
             return
 
-        cmd = [sys.executable, "-X", "utf8", ANALYZE]
+        cmd = [_get_python(), "-X", "utf8", ANALYZE]
         csv_path = self._csv_var.get().strip()
         if csv_path:
             cmd += ["--csv", csv_path]
@@ -444,7 +487,6 @@ class AnalysisDialog(tk.Toplevel):
                          args=(cmd,), daemon=True).start()
 
 
-# ── ML Dialog ────────────────────────────────────────────────────────────────
 class MLDialog(tk.Toplevel):
     """Dialog za zagon regresijskih ML modelov."""
 
@@ -473,15 +515,16 @@ class MLDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
-        # Najprej preveri akumulirano bazo iz scraping_runs/
-        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
-        if os.path.isfile(baza):
-            return baza
-        for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
-                     "nepremicnine_export.csv"):
-            p = os.path.join(SCRIPT_DIR, name)
-            if os.path.isfile(p):
-                return p
+        # Ičemo v DATA_DIR (ob exe) in v SCRIPT_DIR
+        for base in (DATA_DIR, SCRIPT_DIR):
+            baza = os.path.join(base, "scraping_runs", "baza.csv")
+            if os.path.isfile(baza):
+                return baza
+            for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
+                         "nepremicnine_export.csv"):
+                p = os.path.join(base, name)
+                if os.path.isfile(p):
+                    return p
         return ""
 
     def _build_ui(self):
@@ -581,38 +624,110 @@ class MLDialog(tk.Toplevel):
                   cursor="hand2", command=self._browse_docx).pack(side="left", padx=2)
 
 
-    def _browse_csv(self):
-        p = filedialog.askopenfilename(
-            filetypes=[("CSV datoteke", "*.csv"), ("Vse datoteke", "*.*")],
-            initialdir=SCRIPT_DIR, title="Izberi CSV datoteko…")
-        if p: self._csv_var.set(p)
-
     def _browse_docx(self):
-        p = filedialog.asksaveasfilename(
+        path = filedialog.asksaveasfilename(
             defaultextension=".docx",
             filetypes=[("Word dokument", "*.docx"), ("Vse datoteke", "*.*")],
             initialdir=SCRIPT_DIR, title="Shrani poročilo kot…")
-        if p: self._docx_path_var.set(p)
+        if path: self._docx_path_var.set(path)
 
+    # ── CSV brskanje & nalaganje vrst ─────────────────────────────────────────
+    def _browse_csv(self):
+        path = filedialog.askopenfilename(
+            filetypes=[("CSV datoteke", "*.csv"), ("Vse datoteke", "*.*")],
+            initialdir=SCRIPT_DIR, title="Izberi CSV datoteko…")
+        if path:
+            self._csv_var.set(path)
+            self._load_vrste(path)
+
+    def _load_vrste(self, path: str):
+        """Preberi unikatne VrstaObjekta vrednosti iz CSV in obnovi checkboxe."""
+        if not path or not os.path.isfile(path):
+            return
+        try:
+            vrste_set: set[str] = set()
+            with open(path, newline="", encoding="utf-8-sig") as f:
+                for row in _csv.DictReader(f, delimiter=";"):
+                    v = row.get("VrstaObjekta", "").strip()
+                    if v:
+                        vrste_set.add(v)
+
+            for w in self._vrste_container.winfo_children():
+                w.destroy()
+            self._vrste_vars.clear()
+
+            if not vrste_set:
+                tk.Label(self._vrste_container,
+                         text="Ni najdenih vrst objekta v CSV.",
+                         bg=BG, fg=FG2, font=FONT).pack(anchor="w")
+                return
+
+            self._all_vrste_var.set(True)
+
+            def toggle_all():
+                s = self._all_vrste_var.get()
+                for v in self._vrste_vars.values():
+                    v.set(s)
+
+            def on_item_change():
+                self._all_vrste_var.set(
+                    all(v.get() for v in self._vrste_vars.values()))
+
+            tk.Checkbutton(self._vrste_container, text="✔ Vse vrste",
+                           variable=self._all_vrste_var,
+                           bg=BG, fg=ACCENT, selectcolor=BG3,
+                           activebackground=BG, font=FONT_B, anchor="w",
+                           command=toggle_all).pack(fill="x")
+            ttk.Separator(self._vrste_container,
+                          orient="horizontal").pack(fill="x", pady=3)
+
+            grid = tk.Frame(self._vrste_container, bg=BG)
+            grid.pack(fill="x")
+            cols = 3
+            for i, vrsta in enumerate(sorted(vrste_set)):
+                var = tk.BooleanVar(value=True)
+                tk.Checkbutton(grid, text=vrsta, variable=var,
+                               bg=BG, fg=FG, selectcolor=BG3,
+                               activebackground=BG, font=FONT, anchor="w",
+                               command=on_item_change).grid(
+                    row=i // cols, column=i % cols, sticky="w", padx=8, pady=1)
+                self._vrste_vars[vrsta] = var
+
+        except Exception as exc:
+            for w in self._vrste_container.winfo_children():
+                w.destroy()
+            tk.Label(self._vrste_container, text=f"Napaka pri branju CSV: {exc}",
+                     bg=BG, fg=RED, font=FONT).pack(anchor="w")
+        finally:
+            # Obnovi mousewheel binding za dinamično dodano vsebino
+            if hasattr(self, "_sf"):
+                self._sf.refresh_wheel()
+
+    # ── Zagon analize ─────────────────────────────────────────────────────────
+
+    # -- Zagon ML modelov --
     def _start(self):
         if self._parent._running:
-            messagebox.showwarning("V teku", "Počakaj, da se trenutni proces konča.")
+            messagebox.showwarning("V teku", "Pocakaj, da se trenutni proces konca.")
             return
         csv_p = self._csv_var.get().strip()
-        cmd = [sys.executable, "-X", "utf8", MODELI,
-               "--split", str(self._split_var.get() / 100),
+        if not csv_p or not os.path.isfile(csv_p):
+            messagebox.showwarning("CSV", "Najprej izberi veljavno CSV datoteko.")
+            return
+
+        cmd = [_get_python(), "-X", "utf8", MODELI,
+               "--csv",   csv_p,
+               "--split", str(int(self._split_var.get())),
                "--seed",  str(self._seed_var.get())]
-        if csv_p:
-            cmd += ["--csv", csv_p]
         if self._docx_var.get():
             cmd.append("--docx")
-            dp = self._docx_path_var.get().strip()
-            if dp:
-                cmd += ["--docx-izhod", dp]
+            docx_p = self._docx_path_var.get().strip()
+            if docx_p:
+                cmd += ["--docx-izhod", docx_p]
+
         self.destroy()
         self._parent._log_write(
-            f"\n{'='*55}\n  🤖 ML Modeli: linearna, ridge, drevo, naključni gozd\n{'='*55}\n\n",
-            "head")
+            f"\n{'='*55}\n  ML modeli\n{'='*55}\n\n", "head")
         self._parent._set_running(True)
         threading.Thread(target=self._parent._run_process,
                          args=(cmd,), daemon=True).start()
@@ -625,7 +740,8 @@ def _model_status(csv_path: str, n_trees: int = 60, depth: int = 7) -> str:
     if not csv_path or not os.path.isfile(csv_path):
         return "model: CSV ni izbran"
     base       = os.path.splitext(os.path.abspath(csv_path))[0]
-    cache_path = f"{base}_cenik_rf{n_trees}_d{depth}.pkl"
+    # Ujema se z imenom, ki ga ustvari cenik.py: ..._cenik_rf<n>_d<depth>_log.pkl
+    cache_path = f"{base}_cenik_rf{n_trees}_d{depth}_log.pkl"
     if not os.path.isfile(cache_path):
         return "⚠  Model ni shranjen – prva napoved bo počasna"
     age_s = int(os.path.getmtime(cache_path))
@@ -650,7 +766,7 @@ class CenikDialog(tk.Toplevel):
 
     def __init__(self, parent: "ScraperGUI"):
         super().__init__(parent)
-        self.title("🏠  Napovednik cen nepremičnin")
+        self.title("●  Napovednik cen nepremičnin")
         self.configure(bg=BG)
         self.geometry("640x760")
         self.minsize(520, 620)
@@ -683,15 +799,16 @@ class CenikDialog(tk.Toplevel):
 
     # ── helpers ───────────────────────────────────────────────────────────────
     def _find_default_csv(self) -> str:
-        # Najprej preveri akumulirano bazo iz scraping_runs/
-        baza = os.path.join(SCRIPT_DIR, "scraping_runs", "baza.csv")
-        if os.path.isfile(baza):
-            return baza
-        for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
-                     "nepremicnine_export.csv"):
-            p = os.path.join(SCRIPT_DIR, name)
-            if os.path.isfile(p):
-                return p
+        # Ičemo v DATA_DIR (ob exe) in v SCRIPT_DIR
+        for base in (DATA_DIR, SCRIPT_DIR):
+            baza = os.path.join(base, "scraping_runs", "baza.csv")
+            if os.path.isfile(baza):
+                return baza
+            for name in ("nepremicnine_export_prodaja.csv", "nepremicnine_export_najem.csv",
+                         "nepremicnine_export.csv"):
+                p = os.path.join(base, name)
+                if os.path.isfile(p):
+                    return p
         return ""
 
     def _reload_csv(self, path: str):
@@ -739,7 +856,7 @@ class CenikDialog(tk.Toplevel):
         # ── Header (zgoraj, fiksno) ────────────────────────────────────────
         hdr = tk.Frame(self, bg=ACCENT2, padx=12, pady=8)
         hdr.pack(fill="x")
-        tk.Label(hdr, text="🏠  Napovednik cen nepremičnin",
+        tk.Label(hdr, text="●  Napovednik cen nepremičnin",
                  bg=ACCENT2, fg="white", font=FONT_H).pack(side="left")
 
         # ── Status bar (spodaj, fiksno – PRED telesom!) ────────────────────
@@ -828,7 +945,7 @@ class CenikDialog(tk.Toplevel):
 
         lbl(3, 0, "Energetski razred:")
         combo(3, 1, self._enr_var, self._ENERGIJA, w=6)
-        tk.Label(inp_lf, text="(A+ = najboljši, G = najslabši)",
+        tk.Label(inp_lf, text="( A+ = najboljši, G = najslabši)",
                  bg=BG, fg=FG2, font=("Segoe UI", 8, "italic"),
                  anchor="w").grid(row=3, column=2, columnspan=2, sticky="w",
                                   padx=(0, 8), pady=4)
@@ -902,12 +1019,12 @@ class CenikDialog(tk.Toplevel):
             return
 
         self._retrain_running = True
-        self._retrain_btn.config(state="disabled", text="⏳  Treniram …")
-        self._model_status_lbl.config(text="  ⏳  Treniram model, prosim počakaj …",
+        self._retrain_btn.config(state="disabled", text="●  Treniram …")
+        self._model_status_lbl.config(text="  ●  Treniram model, prosim počakaj …",
                                       fg=ORANGE)
         self.update_idletasks()
 
-        cmd = [sys.executable, "-X", "utf8", CENIK,
+        cmd = [_get_python(), "-X", "utf8", CENIK,
                "--csv", csv_p, "--samo-trening"]
         threading.Thread(target=self._run_retrain, args=(cmd,), daemon=True).start()
 
@@ -956,7 +1073,7 @@ class CenikDialog(tk.Toplevel):
             self._set_result("CSV datoteka ni veljavna.", error=True)
             return
 
-        cmd = [sys.executable, "-X", "utf8", CENIK,
+        cmd = [_get_python(), "-X", "utf8", CENIK,
                "--csv",       csv_p,
                "--vrsta",     self._vrsta_var.get(),
                "--kraj",      self._kraj_var.get(),
@@ -966,7 +1083,7 @@ class CenikDialog(tk.Toplevel):
                "--sobe",      str(self._sobe_var.get()),
                "--energija",  self._enr_var.get()]
 
-        self._price_lbl.config(text="⏳  Računam…", fg=FG2)
+        self._price_lbl.config(text="●  Računam…", fg=FG2)
         self._ci_lbl.config(text="")
         self._set_status("Treniram model in računam napoved…", ORANGE)
         self.update_idletasks()
@@ -1013,6 +1130,9 @@ class CenikDialog(tk.Toplevel):
         sim_filt  = kv.get("PODOBNI_FILTER", "")
         n_vzorcev = kv.get("VZORCI", "?")
         napaka_pct= float(kv.get("NAPAKA_PCT", 0))
+        # Model info (iz cenik.py izhoda)
+        model_ime = kv.get("ZNACILKE", "")
+        use_log   = kv.get("USE_LOG", "0")
 
         price_str = f"{cena:,.0f} €".replace(",", ".")
         ci_str    = f"90 % interval:  {ci_min:,.0f} – {ci_max:,.0f} €".replace(",", ".")
@@ -1020,8 +1140,12 @@ class CenikDialog(tk.Toplevel):
         # Barva: zelena = blizu medianu podobnih, oranžna = oddaljena
         col = GREEN if napaka_pct < 20 else (ORANGE if napaka_pct < 40 else RED)
 
+        log_info = "  Log-transformacija cen: DA\n" if use_log == "1" else ""
         detail = (
             f"Učna baza:        {n_vzorcev} oglasov\n"
+            f"Model:            RandomForest  (cenik.py)\n"
+            f"{log_info}"
+            f"Značilke:         {model_ime or 'VelikostM2, LetoGradnje, Obcina …'}\n"
             f"Podobni oglasi:   {sim_n}  ({sim_filt})\n"
             f"  Razpon:         {sim_min:,.0f} – {sim_max:,.0f} €\n"
             f"  Povprečje:      {sim_povp:,.0f} €\n"
@@ -1054,7 +1178,7 @@ class ScraperGUI(tk.Tk):
         # ── Glava ─────────────────────────────────────────────────────────────
         header = tk.Frame(self, bg=ACCENT2, padx=16, pady=10)
         header.pack(fill="x")
-        tk.Label(header, text="🏠  Nepremičnine.net  Scraper",
+        tk.Label(header, text="●  Nepremičnine.net  Scraper",
                  bg=ACCENT2, fg="white", font=("Segoe UI", 14, "bold")).pack(side="left")
         self._status_lbl = tk.Label(header, text="● Pripravljen",
                                     bg=ACCENT2, fg="#c8f7c5",
@@ -1110,7 +1234,7 @@ class ScraperGUI(tk.Tk):
                   activebackground="#6a1b9a", cursor="hand2",
                   command=self._run_ml).pack(side="left", padx=(0, 8))
 
-        tk.Button(bottom, text="🏠  Cenik",
+        tk.Button(bottom, text="●  Cenik",
                   bg="#00897b", fg="white", font=FONT_B,
                   relief="flat", padx=14, pady=8,
                   activebackground="#00695c", cursor="hand2",
@@ -1165,7 +1289,7 @@ class ScraperGUI(tk.Tk):
             r = tk.Frame(f, bg=BG)
             r.pack(fill="x", pady=2, padx=6)
             tk.Label(r, text=lbl, bg=BG, fg=FG2, font=FONT,
-                     width=14, anchor="w").pack(side="left")
+                     anchor="w", width=14).pack(side="left")
             widget_fn(r, **kw).pack(side="left", fill="x", expand=True)
 
         self._strani_var = tk.IntVar(value=0)
@@ -1312,7 +1436,7 @@ class ScraperGUI(tk.Tk):
                 return
 
         # Sestavi argumente
-        cmd = [sys.executable, "-X", "utf8", SCRAPER,
+        cmd = [_get_python(), "-X", "utf8", SCRAPER,
                "--regije", ",".join(reg_slugs),
                "--vrste",  ",".join(vrs_slugs),
                "--akcija", self._akcija_var.get(),
@@ -1401,4 +1525,6 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     app = ScraperGUI()
     app.mainloop()
+
+
 
